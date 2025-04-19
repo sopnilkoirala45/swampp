@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sopnil</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to bottom, #aee3f9, #89c9f8);
+      color: #fff;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .container {
+      display: flex;
+      height: 100%;
+      flex-direction: row;
+    }
+
+    .sidebar {
+      width: 250px;
+      background: #3d5a80;
+      padding: 20px;
+      border-radius: 0 15px 15px 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar input {
+      width: 100%;
+      margin: 10px 0;
+      padding: 10px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+    }
+
+    .bet-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      justify-content: space-between;
+    }
+
+    .bet-buttons button {
+      flex: 1 1 45%;
+      font-size: 14px;
+      padding: 6px;
+      background: #5e768f;
+      color: #fff;
+      font-weight: bold;
+      border: none;
+      border-radius: 4px;
+    }
+
+    .sidebar button#actionBtn {
+      width: 100%;
+      margin: 12px 0;
+      padding: 16px;
+      font-size: 18px;
+      border: none;
+      border-radius: 30px;
+      font-weight: bold;
+      cursor: pointer;
+      background: linear-gradient(to right, #ff9800, #fbc02d);
+      color: #fff;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      transition: transform 0.2s, background 0.3s;
+    }
+
+    .sidebar button#actionBtn:hover {
+      transform: scale(1.05);
+    }
+
+    .game-area {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow-y: auto;
+      position: relative;
+      padding: 10px;
+    }
+
+    #game {
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 15px;
+      position: relative;
+    }
+
+    .row {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      position: relative;
+    }
+
+    .row .multiplier-label {
+      position: absolute;
+      left: -90px;
+      font-size: 16px;
+      color: #222;
+      font-weight: bold;
+    }
+
+    .tile {
+      width: 80px;
+      height: 80px;
+      background: #4caf50;
+      border-radius: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      box-shadow: 0 0 8px #000;
+      transition: all 0.2s ease;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .tile:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 12px 4px #fff;
+    }
+
+    .tile.revealed {
+      cursor: default;
+    }
+
+    .tile.bomb {
+      background: #e74c3c;
+      color: #fff;
+    }
+
+    .tile.safe {
+      background: #2ecc71;
+      color: #fff;
+      animation: glow 0.8s ease-out forwards;
+    }
+
+    @keyframes glow {
+      0% { box-shadow: 0 0 5px 2px #fff; }
+      100% { box-shadow: 0 0 15px 6px #2ecc71; }
+    }
+
+    #winPopup {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.85);
+      border: 4px solid #000;
+      padding: 30px;
+      border-radius: 15px;
+      text-align: center;
+      display: none;
+      color: #fff;
+      box-shadow: 0 0 20px 5px #27ae60;
+      animation: popup 0.5s ease-out;
+    }
+
+    @keyframes popup {
+      from { opacity: 0; transform: scale(0.5) translate(-50%, -50%); }
+      to { opacity: 1; transform: scale(1) translate(-50%, -50%); }
+    }
+
+    #probabilityDisplay {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      padding: 10px;
+      font-size: 14px;
+      border-radius: 8px;
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+        border-radius: 0;
+      }
+      .tile {
+        width: 70px;
+        height: 70px;
+        font-size: 16px;
+      }
+      .row .multiplier-label {
+        left: -70px;
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="sidebar">
+    <input type="number" id="betAmount" value="50" min="5">
+    <div class="bet-buttons">
+      <button onclick="setBet(5)">5</button>
+      <button onclick="setBet(25)">25</button>
+      <button onclick="setBet(50)">50</button>
+      <button onclick="setBet(100)">100</button>
+    </div>
+    <button id="actionBtn" onclick="handleAction()">▶ Start Game</button>
+  </div>
+
+  <div class="game-area">
+    <!-- Centered Balance Box Above Tiles -->
+    <div id="balanceDisplay">Balance: $500</div>
+    <div id="game"></div>
+    <div id="winPopup"></div>
+    <div id="probabilityDisplay"></div>
+  </div>
+</div>
+
+<script>
+  let balance = 500;
+  let bet = 50;
+  let currentRow = 0;
+  let multipliers = [1.3, 2.17, 5.43, 27.16];
+  let winnings = 0;
+  let playing = false;
+  let successfulClick = false;
+  let chancePerRow = [];
+  let bombs = []; // To store bomb positions
+  const game = document.getElementById('game');
+  const balanceDisplay = document.getElementById('balanceDisplay');
+  const actionBtn = document.getElementById('actionBtn');
+  const winPopup = document.getElementById('winPopup');
+  const probabilityDisplay = document.getElementById('probabilityDisplay');
+
+  function setBet(amount) {
+    document.getElementById('betAmount').value = amount;
+  }
+
+  function updateBalance() {
+    balanceDisplay.innerText = `Balance: $${balance.toFixed(2)}`;
+  }
+
+  function generateRandomChances() {
+    chancePerRow = multipliers.map(() => +(Math.random() * 0.3 + 0.4).toFixed(2));
+    bombs = [];
+    // Randomly assign bombs (1 bomb per row, for simplicity)
+    for (let row = 0; row < multipliers.length; row++) {
+      const bombPosition = Math.floor(Math.random() * 5); // Random column (0 to 4)
+      bombs.push({ row, col: bombPosition });
+    }
+  }
+
+  function buildGrid() {
+    game.innerHTML = '';
+    for (let row = 0; row < multipliers.length; row++) {
+      const rowDiv = document.createElement('div');
+      rowDiv.classList.add('row');
+      rowDiv.dataset.row = row;
+
+      const label = document.createElement('div');
+      label.className = "multiplier-label";
+      label.innerText = `x${multipliers[row]}`;
+      rowDiv.appendChild(label);
+
+      for (let i = 0; i < 5; i++) {
+        const tile = document.createElement('div');
+        tile.classList.add('tile');
+        tile.innerText = '?';
+        tile.dataset.row = row;
+        tile.dataset.col = i;
+        tile.addEventListener('click', () => selectTile(tile));
+        rowDiv.appendChild(tile);
+      }
+
+      game.appendChild(rowDiv);
+    }
+  }
+
+  function selectTile(tile) {
+    if (!playing || tile.classList.contains('revealed')) return;
+
+    const tileRow = parseInt(tile.dataset.row);
+    const tileCol = parseInt(tile.dataset.col);
+
+    const isBomb = bombs.some(bomb => bomb.row === tileRow && bomb.col === tileCol);
+
+    tile.classList.add('revealed');
+
+    if (isBomb) {
+      tile.classList.add('bomb');
+      tile.innerText = '❌';
+      showRemainingBombs(); // Show all the remaining bombs across all rows
+      playing = false;
+      actionBtn.textContent = "▶ Start Game";
+    } else {
+      winnings *= multipliers[tileRow];
+      tile.classList.add('safe');
+      tile.innerText = `$${winnings.toFixed(2)}`;
+      successfulClick = true;
+      currentRow++;
+
+      if (currentRow >= multipliers.length) {
+        cashOut();
+      }
+    }
+  }
+
+  function showRemainingBombs() {
+    // Reveal all bombs in remaining rows
+    const allTiles = document.querySelectorAll('.tile');
+    allTiles.forEach(tile => {
+      const tileRow = parseInt(tile.dataset.row);
+      const tileCol = parseInt(tile.dataset.col);
+
+      const isBomb = bombs.some(bomb => bomb.row === tileRow && bomb.col === tileCol);
+
+      if (isBomb && !tile.classList.contains('bomb')) {
+        tile.classList.add('bomb');
+        tile.innerText = '❌';
+      }
+    });
+  }
+
+  function cashOut() {
+    if (!playing || !successfulClick) return;
+    balance += winnings;
+    updateBalance();
+    showWinPopup(winnings);
+    playing = false;
+    actionBtn.textContent = "▶ Start Game";
+  }
+
+  function showWinPopup(amount) {
+    winPopup.innerHTML = `
+      <h1>🎉 You Won $${amount.toFixed(2)}</h1>
+      <small>Multiplier: x${(amount / bet).toFixed(2)}</small>
+    `;
+    winPopup.style.display = 'block';
+  }
+
+  function handleAction() {
+    if (!playing) {
+      startGame();
+    } else {
+      cashOut();
+    }
+  }
+
+  function startGame() {
+    bet = parseFloat(document.getElementById('betAmount').value);
+    if (bet < 5 || bet > balance) {
+      alert("Invalid bet or not enough balance!");
+      return;
+    }
+
+    balance -= bet;
+    winnings = bet;
+    currentRow = 0;
+    successfulClick = false;
+    playing = true;
+    updateBalance();
+    winPopup.style.display = "none";
+    generateRandomChances();
+    buildGrid();
+    actionBtn.textContent = "💰 Take Winnings";
+  }
+
+  // Init game on load
+  generateRandomChances();
+  buildGrid();
+  updateBalance();
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
